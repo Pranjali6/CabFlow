@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cabflow-api
+  namespace: cabflow
+  labels:
+    app: cabflow
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cabflow
+      component: api
+  template:
+    metadata:
+      labels:
+        app: cabflow
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: cabflow/api:latest
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: OMP_NUM_THREADS
+              value: "2"
+            - name: MLFLOW_TRACKING_URI
+              value: "http://cabflow-mlflow:5000"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: model-data
+              mountPath: /app/models
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: cabflow-config
+        - name: model-data
+          persistentVolumeClaim:
+            claimName: model-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cabflow-api
+  namespace: cabflow
+  labels:
+    app: cabflow
+    component: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+  selector:
+    app: cabflow
+    component: api

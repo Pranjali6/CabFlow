@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cabflow-dashboard
+  namespace: cabflow
+  labels:
+    app: cabflow
+    component: dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cabflow
+      component: dashboard
+  template:
+    metadata:
+      labels:
+        app: cabflow
+        component: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: cabflow/dashboard:latest
+          ports:
+            - containerPort: 8501
+              protocol: TCP
+          env:
+            - name: OMP_NUM_THREADS
+              value: "2"
+            - name: MLFLOW_TRACKING_URI
+              value: "http://cabflow-mlflow:5000"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cabflow-secrets
+                  key: anthropic-api-key
+                  optional: true
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: model-data
+              mountPath: /app/models
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: cabflow-config
+        - name: model-data
+          persistentVolumeClaim:
+            claimName: model-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cabflow-dashboard
+  namespace: cabflow
+  labels:
+    app: cabflow
+    component: dashboard
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8501
+      protocol: TCP
+  selector:
+    app: cabflow
+    component: dashboard

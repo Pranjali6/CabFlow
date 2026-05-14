@@ -1,0 +1,12 @@
+data/raw/
+data/processed/
+mlruns/
+venv/
+__pycache__/
+*.pyc
+.git/
+.env
+*.egg-info/
+notebooks/
+tests/
+.DS_Store

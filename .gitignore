@@ -1,0 +1,16 @@
+data/raw/
+data/processed/
+!data/demo/
+mlruns/
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+*.parquet
+*.pkl
+*.joblib
+.DS_Store

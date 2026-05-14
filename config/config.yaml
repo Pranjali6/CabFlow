@@ -1,0 +1,120 @@
+project:
+  name: CabFlow
+  seed: 42
+  n_jobs: -1
+data:
+  source: nyc-tlc
+  base_url: https://d37ci6vzurychx.cloudfront.net/trip-data
+  zone_lookup_url: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
+  zone_geojson_urls:
+  - https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON
+  - https://raw.githubusercontent.com/plotly/datasets/master/geojson-nyc-taxi-zones.json
+  raw_dir: data/raw
+  processed_dir: data/processed
+  taxi_type: yellow
+  months:
+  - 2024-01
+  target_col: pickup_count
+  date_col: hour
+  zone_col: PULocationID
+  forecast_horizon: 24
+features:
+  lag_hours:
+  - 1
+  - 2
+  - 3
+  - 24
+  - 48
+  - 168
+  rolling_windows:
+  - 3
+  - 6
+  - 24
+  - 168
+  rolling_stats:
+  - mean
+  - std
+  - min
+  - max
+  fourier_order: 3
+  fourier_period_daily: 24
+  fourier_period_weekly: 168
+  calendar_features:
+  - hour_of_day
+  - day_of_week
+  - day_of_month
+  - month
+  - is_weekend
+  - is_rush_hour
+models:
+  statistical:
+    sarimax:
+      order:
+      - 2
+      - 0
+      - 1
+      seasonal_order:
+      - 1
+      - 1
+      - 1
+      - 24
+    prophet:
+      changepoint_prior_scale: 0.05
+      seasonality_prior_scale: 10
+      yearly_seasonality: false
+      weekly_seasonality: true
+    ets:
+      seasonal_periods: 24
+  ml:
+    xgboost:
+      n_estimators: 1000
+      max_depth: 8
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      early_stopping_rounds: 50
+    lightgbm:
+      n_estimators: 1000
+      max_depth: 8
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      early_stopping_rounds: 50
+    optuna:
+      n_trials: 50
+      timeout: 3600
+  deep_learning:
+    lstm:
+      hidden_size: 128
+      num_layers: 2
+      dropout: 0.2
+      batch_size: 64
+      epochs: 50
+      learning_rate: 0.001
+    nbeats:
+      input_size: 168
+      h: 24
+      max_steps: 1000
+  ensemble:
+    meta_learner: ridge
+    cv_folds: 5
+evaluation:
+  metrics:
+  - rmse
+  - mae
+  - mase
+  - smape
+  cv_splits: 5
+  cv_strategy: expanding_window
+  test_size: 168
+mlflow:
+  tracking_uri: mlruns
+  experiment_name: cabflow
+api:
+  host: 0.0.0.0
+  port: 8000
+dashboard:
+  port: 8501
+agents:
+  model: claude-sonnet-4-6
+  max_tokens: 4096

@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cabflow-config
+  namespace: cabflow
+  labels:
+    app: cabflow
+data:
+  config.yaml: |
+    project:
+      name: CabFlow
+      seed: 42
+      n_jobs: -1
+
+    data:
+      competition: m5-forecasting-accuracy
+      raw_dir: data/raw
+      processed_dir: data/processed
+      calendar_file: calendar.csv
+      sales_file: sales_train_evaluation.csv
+      prices_file: sell_prices.csv
+      sample_submission: sample_submission.csv
+      target_col: sales
+      date_col: date
+      forecast_horizon: 28
+
+    features:
+      lag_days: [7, 14, 21, 28]
+      rolling_windows: [7, 14, 28, 60]
+      rolling_stats: [mean, std, min, max]
+      fourier_order: 5
+      fourier_period: 365.25
+      calendar_features:
+        - day_of_week
+        - day_of_month
+        - week_of_year
+        - month
+        - year
+        - is_weekend
+        - quarter
+
+    models:
+      statistical:
+        sarimax:
+          order: [1, 1, 1]
+          seasonal_order: [1, 1, 1, 7]
+        prophet:
+          changepoint_prior_scale: 0.05
+          seasonality_prior_scale: 10
+          yearly_seasonality: true
+          weekly_seasonality: true
+        ets:
+          seasonal_periods: 7
+
+      ml:
+        xgboost:
+          n_estimators: 1000
+          max_depth: 8
+          learning_rate: 0.05
+          subsample: 0.8
+          colsample_bytree: 0.8
+          early_stopping_rounds: 50
+        lightgbm:
+          n_estimators: 1000
+          max_depth: 8
+          learning_rate: 0.05
+          subsample: 0.8
+          colsample_bytree: 0.8
+          early_stopping_rounds: 50
+        optuna:
+          n_trials: 50
+          timeout: 3600
+
+      deep_learning:
+        lstm:
+          hidden_size: 128
+          num_layers: 2
+          dropout: 0.2
+          batch_size: 64
+          epochs: 50
+          learning_rate: 0.001
+        nbeats:
+          input_size: 28
+          h: 28
+          max_steps: 1000
+        tft:
+          hidden_size: 64
+          attention_head_size: 4
+          dropout: 0.1
+          max_epochs: 50
+          batch_size: 128
+          learning_rate: 0.001
+
+      ensemble:
+        meta_learner: ridge
+        cv_folds: 5
+
+    evaluation:
+      metrics: [rmse, mae, mase, smape, wrmsse]
+      cv_splits: 5
+      cv_strategy: expanding_window
+      test_size: 28
+
+    mlflow:
+      tracking_uri: http://cabflow-mlflow:5000
+      experiment_name: cabflow
+
+    api:
+      host: 0.0.0.0
+      port: 8000
+
+    dashboard:
+      port: 8501
+
+    agents:
+      model: claude-sonnet-4-6
+      max_tokens: 4096
