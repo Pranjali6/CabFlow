@@ -3,16 +3,21 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libgomp1 && \
+        build-essential libgomp1 curl && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements-deploy.txt .
 RUN pip install --no-cache-dir -r requirements-deploy.txt
 
+# Application code
 COPY config/ config/
 COPY src/ src/
 COPY api/ api/
-COPY data/demo/ data/demo/
+
+# Trained models + featured panel for /predict
+COPY models/ models/
+COPY data/processed/trips_featured.parquet data/processed/
+COPY data/raw/taxi_zone_lookup.csv data/raw/
 
 EXPOSE 8000
 
