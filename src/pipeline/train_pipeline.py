@@ -22,7 +22,7 @@ from src.data.feature_engine import build_features
 from src.data.preprocessor import preprocess_pipeline
 from src.evaluation.metrics import compute_all_metrics
 from src.models.ensemble import StackingEnsemble, WeightedEnsemble
-from src.models.ml_models import LightGBMForecaster, XGBoostForecaster
+from src.models.ml_models import CatBoostForecaster, LightGBMForecaster, XGBoostForecaster
 from src.utils.helpers import get_feature_columns, load_config, set_seed
 from src.utils.logger import get_logger
 
@@ -121,10 +121,25 @@ def run_training_pipeline(
         mlflow.log_metrics(lgb_metrics)
         logger.info(f"LightGBM metrics: {lgb_metrics}")
 
+    with mlflow.start_run(run_name="catboost"):
+        logger.info("Training CatBoost...")
+        cat = CatBoostForecaster()
+        cat.fit(train_df, target_col, feature_cols)
+        cat_preds = cat.predict(test_df)
+        cat_metrics = compute_all_metrics(test_df[target_col].values, cat_preds)
+        results["CatBoost"] = cat_metrics
+        mlflow.log_params(cat.get_params())
+        mlflow.log_metrics(cat_metrics)
+        logger.info(f"CatBoost metrics: {cat_metrics}")
+
     with mlflow.start_run(run_name="weighted_ensemble"):
         logger.info("Training Weighted Ensemble...")
         ens = WeightedEnsemble(
-            [("xgboost", XGBoostForecaster()), ("lightgbm", LightGBMForecaster())]
+            [
+                ("xgboost", XGBoostForecaster()),
+                ("lightgbm", LightGBMForecaster()),
+                ("catboost", CatBoostForecaster()),
+            ]
         )
         ens.fit(train_df, target_col, feature_cols)
         ens_preds = ens.predict(test_df)
@@ -138,7 +153,11 @@ def run_training_pipeline(
     with mlflow.start_run(run_name="stacking_ensemble"):
         logger.info("Training Stacking Ensemble...")
         stack = StackingEnsemble(
-            [("xgboost", XGBoostForecaster()), ("lightgbm", LightGBMForecaster())],
+            [
+                ("xgboost", XGBoostForecaster()),
+                ("lightgbm", LightGBMForecaster()),
+                ("catboost", CatBoostForecaster()),
+            ],
             meta_learner="ridge",
         )
         stack.fit(train_df.reset_index(drop=True), target_col, feature_cols)
@@ -161,6 +180,7 @@ def run_training_pipeline(
     models_dir.mkdir(exist_ok=True)
     xgb.save(models_dir / "xgboost.pkl")
     lgb.save(models_dir / "lightgbm.pkl")
+    cat.save(models_dir / "catboost.pkl")
     logger.info(f"Models saved to {models_dir}")
 
     return results_df

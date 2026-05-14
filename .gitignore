@@ -1,7 +1,4 @@
-data/raw/
-data/processed/
-!data/demo/
-mlruns/
+# --- Standard ignores ---
 __pycache__/
 *.pyc
 *.pyo
@@ -10,7 +7,25 @@ __pycache__/
 dist/
 build/
 .ipynb_checkpoints/
-*.parquet
-*.pkl
-*.joblib
 .DS_Store
+mlruns/
+venv/
+
+# --- Raw data: block by default, allow the small artifacts the demo needs ---
+data/raw/*
+!data/raw/taxi_zone_lookup.csv
+!data/raw/weather/
+
+# --- Processed data: block bulk Parquet, allow the demo files ---
+data/processed/*
+!data/processed/trips_hourly.parquet
+!data/processed/trips_featured.parquet
+
+# --- Models: block by default, allow the trained demo models ---
+models/*
+!models/xgboost.pkl
+!models/lightgbm.pkl
+!models/catboost.pkl
+
+# --- Streamlit secrets are NEVER committed (use Streamlit Cloud's UI instead) ---
+.streamlit/secrets.toml

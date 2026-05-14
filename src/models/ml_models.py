@@ -750,3 +750,125 @@ class LightGBMForecaster(BaseForecaster):
             f"LightGBMForecaster(n_estimators={self.n_estimators}, "
             f"max_depth={self.max_depth}, lr={self.learning_rate})"
         )
+
+
+# ---------------------------------------------------------------------------
+# CatBoost
+# ---------------------------------------------------------------------------
+
+class CatBoostForecaster(BaseForecaster):
+    """CatBoost gradient-boosted tree forecaster.
+
+    Wraps :class:`catboost.CatBoostRegressor`. CatBoost often beats
+    LightGBM on tabular data with mixed categorical + numerical features
+    and tends to need less hyperparameter tuning. Adds useful model
+    diversity to the XGBoost / LightGBM ensemble.
+    """
+
+    name: str = "CatBoost"
+
+    def __init__(
+        self,
+        iterations: int = 1000,
+        depth: int = 8,
+        learning_rate: float = 0.05,
+        l2_leaf_reg: float = 3.0,
+        early_stopping_rounds: int = 50,
+        val_size: int = 168,
+        random_state: int = 42,
+        **kwargs: Any,
+    ) -> None:
+        self.iterations = iterations
+        self.depth = depth
+        self.learning_rate = learning_rate
+        self.l2_leaf_reg = l2_leaf_reg
+        self.early_stopping_rounds = early_stopping_rounds
+        self.val_size = val_size
+        self.random_state = random_state
+        self.extra_params = kwargs
+
+        self._model: Optional[Any] = None
+        self._target_col: Optional[str] = None
+        self._feature_cols: List[str] = []
+        self._feature_importance: Optional[pd.DataFrame] = None
+
+    def fit(
+        self,
+        train_df: pd.DataFrame,
+        target_col: str,
+        feature_cols: List[str],
+        **kwargs: Any,
+    ) -> "CatBoostForecaster":
+        from catboost import CatBoostRegressor, Pool
+
+        self._target_col = target_col
+        self._feature_cols = list(feature_cols)
+
+        split_idx = len(train_df) - self.val_size
+        df_train = train_df.iloc[:split_idx]
+        df_val = train_df.iloc[split_idx:]
+
+        X_train = df_train[self._feature_cols].values
+        y_train = df_train[target_col].values
+        X_val = df_val[self._feature_cols].values
+        y_val = df_val[target_col].values
+
+        self._model = CatBoostRegressor(
+            iterations=self.iterations,
+            depth=self.depth,
+            learning_rate=self.learning_rate,
+            l2_leaf_reg=self.l2_leaf_reg,
+            random_seed=self.random_state,
+            verbose=False,
+            allow_writing_files=False,
+            **self.extra_params,
+        )
+        self._model.fit(
+            Pool(X_train, y_train),
+            eval_set=Pool(X_val, y_val),
+            early_stopping_rounds=self.early_stopping_rounds,
+            use_best_model=True,
+        )
+
+        importances = self._model.get_feature_importance()
+        self._feature_importance = (
+            pd.DataFrame({"feature": self._feature_cols, "importance": importances})
+            .sort_values("importance", ascending=False)
+            .reset_index(drop=True)
+        )
+
+        logger.info(
+            "CatBoost fitted  best_iteration=%s  n_features=%d",
+            self._model.get_best_iteration(),
+            len(self._feature_cols),
+        )
+        return self
+
+    def predict(self, df: pd.DataFrame, **kwargs: Any) -> np.ndarray:
+        if self._model is None:
+            raise RuntimeError("Model has not been fitted yet. Call fit() first.")
+        X = df[self._feature_cols].values
+        return self._model.predict(X, **kwargs)
+
+    def get_params(self) -> Dict[str, object]:
+        return {
+            "iterations": self.iterations,
+            "depth": self.depth,
+            "learning_rate": self.learning_rate,
+            "l2_leaf_reg": self.l2_leaf_reg,
+            "early_stopping_rounds": self.early_stopping_rounds,
+            "val_size": self.val_size,
+            "random_state": self.random_state,
+            **self.extra_params,
+        }
+
+    def get_feature_importance(self, top_n: int = 20) -> pd.DataFrame:
+        if self._feature_importance is None:
+            raise RuntimeError("Feature importance not available. Call fit() first.")
+        return self._feature_importance.head(top_n).copy()
+
+    def __repr__(self) -> str:
+        return (
+            f"CatBoostForecaster(iterations={self.iterations}, "
+            f"depth={self.depth}, lr={self.learning_rate})"
+        )

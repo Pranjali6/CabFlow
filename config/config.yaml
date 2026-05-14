@@ -13,7 +13,12 @@ data:
   processed_dir: data/processed
   taxi_type: yellow
   months:
-  - 2024-01
+  - 2024-07
+  - 2024-08
+  - 2024-09
+  - 2024-10
+  - 2024-11
+  - 2024-12
   target_col: pickup_count
   date_col: hour
   zone_col: PULocationID

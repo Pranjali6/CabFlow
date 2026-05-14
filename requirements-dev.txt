@@ -1,0 +1,34 @@
+# Full research + training dependencies (NOT used by the deployed Streamlit app).
+# Install locally if you want to retrain models, run notebooks, or use deep
+# learning / Prophet / SHAP / MLflow / FastAPI.
+
+-r requirements.txt
+
+# Deep learning
+torch>=2.1.0
+pytorch-forecasting>=1.0.0
+pytorch-lightning>=2.1.0
+neuralforecast>=1.7.0
+
+# Other classical forecasters
+prophet>=1.1.5
+
+# Hyperparameter tuning
+optuna>=3.4.0
+
+# Explainability
+shap>=0.43.0
+
+# Experiment tracking
+mlflow>=2.9.0
+
+# API serving (not deployed via Streamlit Cloud)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Notebooks
+jupyter>=1.0.0
+ipykernel>=6.0.0
+
+# Tests
+pytest>=7.4.0

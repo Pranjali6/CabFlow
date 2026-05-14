@@ -1,6 +1,7 @@
 """CabFlow -- NYC Yellow Taxi Demand Forecasting Dashboard."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -12,6 +13,14 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Expose Streamlit secrets to libraries that read from os.environ
+# (e.g. the anthropic SDK). Set in Streamlit Cloud's Secrets UI.
+try:
+    if "ANTHROPIC_API_KEY" in st.secrets:
+        os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
+except Exception:
+    pass
 
 from src.evaluation.metrics import compute_all_metrics
 from src.models.base import BaseForecaster

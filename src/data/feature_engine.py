@@ -88,6 +88,63 @@ def add_calendar_features(df: pd.DataFrame, date_col: str = "hour") -> pd.DataFr
     return df
 
 
+def add_holiday_features(df: pd.DataFrame, date_col: str = "hour") -> pd.DataFrame:
+    """Add US holiday flags and proximity features.
+
+    Captures:
+        - is_federal_holiday  (Labor Day, Thanksgiving, Christmas, NYD, ...)
+        - is_christmas_week   (Dec 24-31, the big yellow-taxi anomaly window)
+        - is_nye / is_nyd     (New Year's Eve and Day - massive late-night surges)
+        - is_thanksgiving_week (Thanksgiving + Black Friday)
+        - is_halloween_eve    (huge late-night Manhattan demand)
+        - days_to_christmas   (countdown - influences shopping trips)
+    """
+    print("Adding holiday features...")
+    import holidays as hol
+
+    dt = pd.to_datetime(df[date_col]).dt
+    dates = dt.date
+
+    us_holidays = hol.US(years=sorted(set(dt.year.unique().tolist())))
+    holiday_set = {pd.Timestamp(d).date() for d in us_holidays}
+    df["is_federal_holiday"] = pd.Series(dates, index=df.index).isin(holiday_set).astype(np.int8)
+
+    df["is_christmas_week"] = (
+        ((dt.month == 12) & (dt.day >= 24)) | ((dt.month == 1) & (dt.day == 1))
+    ).astype(np.int8)
+    df["is_nye"] = ((dt.month == 12) & (dt.day == 31)).astype(np.int8)
+    df["is_nyd"] = ((dt.month == 1) & (dt.day == 1)).astype(np.int8)
+
+    # Thanksgiving = 4th Thursday of November. Use offset from US holidays.
+    # We mark the entire Wed-Sun window because demand is anomalous all week.
+    thanksgivings = {
+        pd.Timestamp(d).date()
+        for d, name in us_holidays.items()
+        if "Thanksgiving" in name
+    }
+    thanksgiving_week = set()
+    for tday in thanksgivings:
+        for off in range(-1, 4):  # Wed (Thu-1) through Sun (Thu+3)
+            thanksgiving_week.add(tday + pd.Timedelta(days=off))
+    df["is_thanksgiving_week"] = (
+        pd.Series(dates, index=df.index).isin(thanksgiving_week).astype(np.int8)
+    )
+
+    df["is_halloween_eve"] = ((dt.month == 10) & (dt.day == 31)).astype(np.int8)
+
+    # Days to nearest Christmas in each year (clamped to +/- 30 days, else 99).
+    days_to_xmas = pd.Series(np.full(len(df), 99, dtype=np.int16), index=df.index)
+    for year in dt.year.unique():
+        xmas = pd.Timestamp(year=int(year), month=12, day=25).date()
+        mask = dt.year == year
+        diffs = (pd.Series(dates, index=df.index)[mask] - xmas).apply(lambda x: x.days)
+        diffs = diffs.where(diffs.abs() <= 30, 99)
+        days_to_xmas.loc[mask] = diffs.astype(np.int16)
+    df["days_to_christmas"] = days_to_xmas
+
+    return df
+
+
 def add_fourier_features(
     df: pd.DataFrame,
     date_col: str = "hour",
@@ -145,6 +202,8 @@ def build_features(
     df: pd.DataFrame,
     config: dict | None = None,
     include_target_encoding: bool = True,
+    include_weather: bool = True,
+    include_holidays: bool = True,
 ) -> pd.DataFrame:
     """Run the full feature engineering pipeline."""
     if config is None:
@@ -169,6 +228,18 @@ def build_features(
         order=feat_cfg["fourier_order"],
     )
     df = add_encoding_features(df)
+
+    if include_holidays:
+        df = add_holiday_features(df, date_col)
+
+    if include_weather:
+        try:
+            from src.data.weather import attach_weather
+
+            print("Adding weather features (Open-Meteo)...")
+            df = attach_weather(df, hour_col=date_col)
+        except Exception as exc:
+            print(f"  WARNING: weather merge failed ({exc}); continuing without it.")
 
     if include_target_encoding:
         df = add_target_encoding(df, target)
