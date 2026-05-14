@@ -27,6 +27,53 @@ from src.models.base import BaseForecaster
 from src.utils.helpers import get_feature_columns, load_config
 
 st.set_page_config(page_title="CabFlow", page_icon="🚕", layout="wide")
+
+# ---------------------------------------------------------------------------
+# Dark mode toggle (Streamlit 1.30+ removed the built-in theme menu)
+# ---------------------------------------------------------------------------
+dark_mode = st.sidebar.toggle("🌙 Dark mode", value=False, key="cabflow_dark_mode")
+PLOTLY_TEMPLATE = "plotly_dark" if dark_mode else "plotly_white"
+
+if dark_mode:
+    st.markdown(
+        """
+        <style>
+            .stApp, [data-testid="stAppViewContainer"] {
+                background-color: #0e1117 !important;
+                color: #fafafa !important;
+            }
+            [data-testid="stSidebar"] {
+                background-color: #161a24 !important;
+            }
+            [data-testid="stHeader"] { background-color: #0e1117 !important; }
+            h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown,
+            [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {
+                color: #fafafa !important;
+            }
+            [data-testid="stMetric"] {
+                background-color: #1a1f2e !important;
+                border-radius: 8px;
+                padding: 12px;
+            }
+            div[data-testid="stExpander"] details {
+                background-color: #161a24 !important;
+            }
+            .stDataFrame, .stTable {
+                background-color: #1a1f2e !important;
+            }
+            .stRadio > label, .stSelectbox > label, .stSlider > label {
+                color: #fafafa !important;
+            }
+            /* Inline insight panel */
+            div[style*="background:#f0f2f6"] {
+                background: #1a1f2e !important;
+                color: #fafafa !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 st.title("🚕 CabFlow — NYC Yellow Taxi Demand Forecast")
 st.caption("Hourly pickup forecasting across 263 NYC taxi zones | NYC TLC public data")
 
@@ -201,7 +248,7 @@ with tabs[0]:
     fig.update_layout(
         title="City-wide Hourly Pickup Volume",
         height=420,
-        template="plotly_white",
+        template=PLOTLY_TEMPLATE,
         xaxis_title="Time",
         yaxis_title="Pickups",
     )
@@ -226,7 +273,7 @@ with tabs[0]:
         title="Demand Heatmap: Day-of-Week × Hour-of-Day",
         aspect="auto",
     )
-    fig.update_layout(height=380, template="plotly_white")
+    fig.update_layout(height=380, template=PLOTLY_TEMPLATE)
     st.plotly_chart(fig, use_container_width=True)
     best_dow, best_hr = heat_pivot.stack().idxmax()
     _insight(
@@ -245,7 +292,7 @@ with tabs[0]:
             color_continuous_scale="Oranges",
             title="Total Pickups by Borough",
         )
-        fig.update_layout(height=350, template="plotly_white", showlegend=False)
+        fig.update_layout(height=350, template=PLOTLY_TEMPLATE, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
         _insight(
             f"{bo.iloc[0]['Borough']} dominates yellow-taxi demand — yellow cabs are still allowed to street-hail there. "
@@ -336,7 +383,7 @@ with tabs[1]:
             fig.update_layout(
                 title=f"Pickup Forecast — Zone {selected_zone}",
                 height=470,
-                template="plotly_white",
+                template=PLOTLY_TEMPLATE,
                 xaxis_title="Time",
                 yaxis_title="Pickups per Hour",
             )
@@ -356,7 +403,7 @@ with tabs[1]:
             fig.update_layout(
                 title="Hourly Forecast Errors (Actual − Predicted)",
                 height=260,
-                template="plotly_white",
+                template=PLOTLY_TEMPLATE,
                 xaxis_title="Hour",
                 yaxis_title="Error",
             )
@@ -386,7 +433,7 @@ with tabs[1]:
                 y=target_col,
                 title=f"Pickups: zone {selected_zone}",
             )
-            fig.update_layout(template="plotly_white")
+            fig.update_layout(template=PLOTLY_TEMPLATE)
             st.plotly_chart(fig, use_container_width=True)
         st.info("Train a model to see forecasts: `python -m src.pipeline.train_pipeline`")
 
@@ -500,7 +547,7 @@ with tabs[3]:
                 fig.update_layout(
                     title="All Models vs Actual",
                     height=420,
-                    template="plotly_white",
+                    template=PLOTLY_TEMPLATE,
                     yaxis_title="Pickups",
                 )
                 st.plotly_chart(fig, use_container_width=True)
@@ -520,7 +567,7 @@ with tabs[4]:
             title="Pickup Count Distribution",
             color_discrete_sequence=["#3498db"],
         )
-        fig.update_layout(height=320, template="plotly_white")
+        fig.update_layout(height=320, template=PLOTLY_TEMPLATE)
         st.plotly_chart(fig, use_container_width=True)
 
     with c2:
@@ -533,7 +580,7 @@ with tabs[4]:
             title="Avg Pickups by Hour of Day",
             markers=True,
         )
-        fig.update_layout(height=320, template="plotly_white")
+        fig.update_layout(height=320, template=PLOTLY_TEMPLATE)
         st.plotly_chart(fig, use_container_width=True)
         peak = int(hod.loc[hod[target_col].idxmax(), "hour_of_day"])
         _insight(
@@ -554,7 +601,7 @@ with tabs[4]:
         title="Pickups: Weekend vs Weekday",
         color_discrete_map={"Weekend": "#e74c3c", "Weekday": "#3498db"},
     )
-    fig.update_layout(height=350, template="plotly_white", showlegend=False)
+    fig.update_layout(height=350, template=PLOTLY_TEMPLATE, showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -598,7 +645,7 @@ with tabs[5]:
                     )
                     fig.add_hline(y=sig, line_dash="dash", line_color="red")
                     fig.add_hline(y=-sig, line_dash="dash", line_color="red")
-                    fig.update_layout(title="ACF", height=300, template="plotly_white", xaxis_title="Lag (hours)")
+                    fig.update_layout(title="ACF", height=300, template=PLOTLY_TEMPLATE, xaxis_title="Lag (hours)")
                     st.plotly_chart(fig, use_container_width=True)
                 with c2:
                     pacf_vals = pacf_fn(ts.values, nlags=max_lags, method="ywm")
@@ -608,7 +655,7 @@ with tabs[5]:
                     fig.add_hline(y=sig, line_dash="dash", line_color="red")
                     fig.add_hline(y=-sig, line_dash="dash", line_color="red")
                     fig.update_layout(
-                        title="PACF", height=300, template="plotly_white", xaxis_title="Lag (hours)"
+                        title="PACF", height=300, template=PLOTLY_TEMPLATE, xaxis_title="Lag (hours)"
                     )
                     st.plotly_chart(fig, use_container_width=True)
             _insight(
@@ -646,7 +693,7 @@ with tabs[5]:
                         row=i,
                         col=1,
                     )
-                fig.update_layout(height=620, template="plotly_white", showlegend=False)
+                fig.update_layout(height=620, template=PLOTLY_TEMPLATE, showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             st.error(f"STL failed: {e}")
@@ -674,7 +721,7 @@ with tabs[6]:
             title=f"Zone {selected_zone}: DoW × Hour Heatmap",
             aspect="auto",
         )
-        fig.update_layout(height=380, template="plotly_white")
+        fig.update_layout(height=380, template=PLOTLY_TEMPLATE)
         st.plotly_chart(fig, use_container_width=True)
 
         # Borough comparison
@@ -693,7 +740,7 @@ with tabs[6]:
                 title="Average Hourly Pickups by Borough",
                 markers=True,
             )
-            fig.update_layout(height=400, template="plotly_white")
+            fig.update_layout(height=400, template=PLOTLY_TEMPLATE)
             st.plotly_chart(fig, use_container_width=True)
             _insight(
                 "Manhattan has a flatter, higher demand curve all day. "
@@ -731,7 +778,7 @@ with tabs[6]:
         fig.update_layout(
             title="24-Hour vs 168-Hour (Weekly) Moving Averages",
             height=380,
-            template="plotly_white",
+            template=PLOTLY_TEMPLATE,
         )
         st.plotly_chart(fig, use_container_width=True)
 

@@ -1,9 +1,16 @@
+# Theme follows the user's OS preference (Mac System Settings > Appearance).
+# To force a specific theme instead, uncomment one of these blocks.
+#
+# --- Force light ---
+# [theme]
+# base = "light"
+#
+# --- Force dark ---
+# [theme]
+# base = "dark"
+
 [theme]
-base = "light"
 primaryColor = "#f39c12"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
 font = "sans serif"
 
 [server]
