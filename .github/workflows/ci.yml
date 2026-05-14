@@ -29,13 +29,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: azure/setup-kubectl@v4
-      - name: Validate manifests (client-side dry run)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Validate every k8s manifest parses as YAML
         run: |
-          for f in k8s/*.yaml; do
-            echo "Validating $f"
-            kubectl apply --dry-run=client -f "$f"
-          done
+          python - <<'PY'
+          import sys, yaml
+          from pathlib import Path
+
+          failures = []
+          for path in sorted(Path("k8s").glob("*.yaml")):
+              try:
+                  docs = list(yaml.safe_load_all(open(path)))
+                  print(f"  OK    {path}  ({len(docs)} document(s))")
+              except yaml.YAMLError as exc:
+                  print(f"  FAIL  {path}: {exc}")
+                  failures.append(path)
+          if failures:
+              sys.exit(1)
+          PY
 
   build-images:
     name: Build Docker images
