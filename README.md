@@ -1,3 +1,15 @@
+---
+title: CabFlow
+emoji: 🚕
+colorFrom: yellow
+colorTo: red
+sdk: streamlit
+sdk_version: 1.29.0
+app_file: dashboard/app.py
+pinned: false
+license: mit
+---
+
 # CabFlow 🚕
 
 **Real-time NYC Yellow Taxi Demand Forecasting**
