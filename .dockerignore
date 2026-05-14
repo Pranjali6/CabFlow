@@ -1,5 +1,4 @@
-data/raw/
-data/processed/
+# Generic noise
 mlruns/
 venv/
 __pycache__/
@@ -10,3 +9,14 @@ __pycache__/
 notebooks/
 tests/
 .DS_Store
+.streamlit/secrets.toml
+
+# Raw trip Parquets are huge; allow just the metadata + weather cache
+data/raw/*
+!data/raw/taxi_zone_lookup.csv
+!data/raw/weather/
+
+# Processed data: only ship the two demo Parquets the dashboard reads
+data/processed/*
+!data/processed/trips_hourly.parquet
+!data/processed/trips_featured.parquet
